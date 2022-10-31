@@ -21,7 +21,7 @@ async fn post_message(data: Data<Mutex<Vec<Message>>>, req: web::Json<Message>) 
     if let Ok(mut v) = data.lock() {
         async_sleep(Duration::from_millis(5000)).await;
 
-        info!("Received message: {:?}", msg);
+        info!("Secondary received message: {:?}", msg);
         v.push(msg);
 
         HttpResponse::Ok().body("")
@@ -34,7 +34,7 @@ async fn post_message(data: Data<Mutex<Vec<Message>>>, req: web::Json<Message>) 
 async fn get_messages(data: Data<Mutex<Vec<Message>>>) -> HttpResponse {
     if let Ok(v) = data.lock() {
         if let Ok(vec_json) = serde_json::to_string(v.deref()) {
-            info!("All messages sent!");
+            info!("All messages sent from secondary!");
 
             HttpResponse::Ok()
                 .content_type(ContentType::json())
