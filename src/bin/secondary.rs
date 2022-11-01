@@ -18,9 +18,8 @@ struct Message {
 #[post("/private/message/")]
 async fn post_message(data: Data<Mutex<Vec<Message>>>, req: web::Json<Message>) -> HttpResponse {
     let msg = req.into_inner();
+    async_sleep(Duration::from_millis(10000)).await;
     if let Ok(mut v) = data.lock() {
-        async_sleep(Duration::from_millis(5000)).await;
-
         info!("Secondary received message: {:?}", msg);
         v.push(msg);
 
@@ -60,7 +59,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_messages)
             .app_data(Data::clone(&msg_vec))
     })
-        .bind(("127.0.0.1", 8081))?
+        .bind(("127.0.0.1", 8082))?
         .run()
         .await
 }
