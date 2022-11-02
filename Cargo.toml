@@ -1,3 +1,11 @@
+#[[bin]]
+#name = "master"
+#path = "src/bin/master.rs"
+#
+#[[bin]]
+#name = "secondary"
+#path = "src/bin/secondary.rs"
+
 [package]
 name = "replicated-log-ds"
 version = "0.1.0"

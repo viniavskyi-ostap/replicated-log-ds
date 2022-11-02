@@ -7,7 +7,7 @@ services:
       dockerfile: ./master.Dockerfile
     command: ['cargo', 'run', '--release', '--bin', 'master']
     ports:
-      - "8000:8000"
+      - "8080:8080"
     depends_on:
       - secondary
       - secondary2
@@ -17,15 +17,15 @@ services:
     build:
       context: .
       dockerfile: ./secondary.Dockerfile
-    command: ['cargo', 'run', '--release', '--bin', 'secondary', '8001']
+    command: ['cargo', 'run', '--release', '--bin', 'secondary', '8081']
     ports:
-      - "8001:8001"
+      - "8081:8081"
 
   secondary2:
     image: secondary2
     build:
       context: .
       dockerfile: ./secondary.Dockerfile
-    command: ['cargo', 'run', '--release', '--bin', 'secondary', '8002']
+    command: ['cargo', 'run', '--release', '--bin', 'secondary', '8082']
     ports:
-      - "8002:8002"
+      - "8082:8082"
