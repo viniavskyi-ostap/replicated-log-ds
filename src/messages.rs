@@ -19,7 +19,7 @@ pub struct Message {
     msg: String,
 }
 
-const SECONDARY_URLS: [&str; 2] = ["127.0.0.1:8081", "127.0.0.1:8082"];
+const SECONDARY_URLS: [&str; 2] = ["secondary:8081", "secondary2:8082"];
 const SECONDARY_PATH: &str = "private/message";
 
 #[get("/public/messages/")]
@@ -41,7 +41,7 @@ pub async fn get_messages(data: Data<Mutex<Vec<Message>>>) -> HttpResponse {
 
 
 #[post("/private/message/")]
-async fn slave_post_message(data: Data<Mutex<Vec<Message>>>, req: web::Json<Message>) -> HttpResponse {
+pub(crate) async fn slave_post_message(data: Data<Mutex<Vec<Message>>>, req: web::Json<Message>) -> HttpResponse {
     let msg = req.into_inner();
     async_sleep(Duration::from_millis(10000)).await;
     if let Ok(mut v) = data.lock() {
@@ -56,7 +56,7 @@ async fn slave_post_message(data: Data<Mutex<Vec<Message>>>, req: web::Json<Mess
 
 
 #[post("/public/message/")]
-async fn master_post_message(data: Data<Mutex<Vec<Message>>>, req: web::Json<Message>) -> HttpResponse {
+pub async fn master_post_message(data: Data<Mutex<Vec<Message>>>, req: web::Json<Message>) -> HttpResponse {
     let msg = req.into_inner();
 
     let client = reqwest::Client::new();
