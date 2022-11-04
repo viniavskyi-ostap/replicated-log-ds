@@ -1,0 +1,33 @@
+### Sec1 post message
+POST http://127.0.0.1:8081/private/message/
+Content-Type: application/json
+
+{
+  "msg": "hello to sec1"
+}
+
+### Sec1 get all
+GET http://0.0.0.0:8081/public/messages/
+
+## Sec2 post message
+POST http://0.0.0.0:8082/private/message/
+Content-Type: application/json
+
+{
+  "msg": "hello to sec2"
+}
+
+### Sec2 get all
+GET http://0.0.0.0:8082/public/messages/
+
+
+### Master post message
+POST http://localhost:8080/public/message/
+Content-Type: application/json
+
+{
+  "msg": "hello to master 4"
+}
+
+### Master get all
+GET http://0.0.0.0:8080/public/messages/
