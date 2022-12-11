@@ -26,7 +26,8 @@ POST http://127.0.0.1:8080/public/message/
 Content-Type: application/json
 
 {
-  "msg": "hello to master"
+  "msg": "hello to master huy1487",
+  "w_concern": 1
 }
 
 ### Master get all
