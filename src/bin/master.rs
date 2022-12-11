@@ -18,7 +18,7 @@ use serde::de::value::Error;
 use::std::sync::atomic::{AtomicUsize, Ordering};
 
 
-const SECONDARY_URLS: [&str; 2] =["127.0.0.1:8081", "127.0.0.1:8082"];
+const SECONDARY_URLS: [&str; 2] =["secondary:8081", "secondary2:8082"];
 const NUM_SECONDARIES: usize = SECONDARY_URLS.len();
 const SECONDARY_PATH: &str = "private/message";
 static GLOBAL_MESSAGES_COUNT: AtomicUsize = AtomicUsize::new(0);
@@ -104,7 +104,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_messages)
             .app_data(Data::clone(&msg_vec))
     })
-        .bind(("127.0.0.1", 8080))?
+        .bind(("0.0.0.0", 8080))?
         .run()
         .await
 }

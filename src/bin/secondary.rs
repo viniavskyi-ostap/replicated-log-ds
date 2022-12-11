@@ -43,7 +43,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_messages)
             .app_data(Data::clone(&msg_vec))
     })
-        .bind(("127.0.0.1", port))?
+        .bind(("0.0.0.0", port))?
         .run()
         .await
 }
