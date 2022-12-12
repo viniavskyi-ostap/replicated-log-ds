@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::{ops::Deref};
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Mutex, PoisonError, MutexGuard};
 use itertools::Itertools;
 use actix::fut::ok;
 use actix_web::{get, HttpResponse, web::Data};
@@ -58,27 +58,29 @@ pub fn save_message(data: Data<Mutex<HashMap<MessageID, Message>>>,  msg: Messag
     return Ok(());
 }
 
+fn send_messages(message_map:MutexGuard< HashMap<MessageID, Message> >) -> HttpResponse
+{
+    let mut msgs: Vec<(usize, String)> = vec![];
+    for key in message_map.keys().sorted() {
+        msgs.push((key.0, message_map[key].msg.clone()));
+    }
+    match serde_json::to_string(msgs.deref()).map_err(|err|->String{err.to_string()}) {
+        Ok(s) => HttpResponse::Ok()
+        .content_type(ContentType::json())
+        .body(s),
+        
+        Err(s) => HttpResponse::InternalServerError().body(s)
+    }
+}
 
 #[get("/public/messages/")]
 pub async fn get_messages(data: Data<Mutex<HashMap<MessageID, Message>>>) -> HttpResponse {
-    let mut msgs: Vec<(usize, String)> = vec![];
     
-    if let Ok(v) = data.lock() {
-        for key in v.keys().sorted() {
-            msgs.push((key.0, v[key].msg.clone()));
-        }
-        if let Ok(vec_json) = serde_json::to_string(msgs.deref()) {
-            info!("All messages sent!");
-
-            HttpResponse::Ok()
-                .content_type(ContentType::json())
-                .body(vec_json)
-        } else {  // cannot serialize
-            HttpResponse::InternalServerError().body("")
-        }
-    } else {  // poisoned mutex
-        HttpResponse::InternalServerError().body("")
+    match data.lock().map_err(|err| -> String {err.to_string()}){
+        Ok(msgs) => send_messages(msgs),
+        Err(s)=> HttpResponse::InternalServerError().body(s) 
     }
+
 }
 
 
