@@ -44,8 +44,6 @@ impl Default for MessageID{
     }
 }
 
-
-
 pub fn save_message(data: Data<Mutex<HashMap<MessageID, Message>>>,  msg: Message) -> Result<(), String>
 {
     let mut v = data.lock()
@@ -60,15 +58,12 @@ pub fn save_message(data: Data<Mutex<HashMap<MessageID, Message>>>,  msg: Messag
 
 fn send_messages(message_map:MutexGuard< HashMap<MessageID, Message> >) -> HttpResponse
 {
-    let mut msgs: Vec<(usize, String)> = vec![];
-    for key in message_map.keys().sorted() {
-        msgs.push((key.0, message_map[key].msg.clone()));
-    }
+    let msgs: Vec<(usize, String)> = message_map.keys().sorted().map(|k| (k.0, message_map[k].msg.clone())).collect();
     match serde_json::to_string(msgs.deref()).map_err(|err|->String{err.to_string()}) {
         Ok(s) => HttpResponse::Ok()
         .content_type(ContentType::json())
         .body(s),
-        
+
         Err(s) => HttpResponse::InternalServerError().body(s)
     }
 }
@@ -78,6 +73,7 @@ pub async fn get_messages(data: Data<Mutex<HashMap<MessageID, Message>>>) -> Htt
     
     match data.lock().map_err(|err| -> String {err.to_string()}){
         Ok(msgs) => send_messages(msgs),
+        
         Err(s)=> HttpResponse::InternalServerError().body(s) 
     }
 
