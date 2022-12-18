@@ -59,13 +59,13 @@ async fn post_message(
     let mut nadded: usize = 1;
     while nadded < write_concern {
         match req_futures.next().await {
-            // futures return w/o error
+            // futures return w/o error and response status is OK
             Some(Ok(Ok(response))) => {
                 nadded += (response.status() == StatusCode::OK) as usize;
             }
             // iterator exhausted
             None => break,
-            // futures returned with error
+            // futures returned with error or response status is not OK
             _ => continue
         }
     }
