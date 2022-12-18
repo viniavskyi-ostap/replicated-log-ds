@@ -63,8 +63,9 @@ async fn post_message(
         }
         match req_futures.next().await {
             Some(result) => {
-                let response = result??;
-                nadded += (response.status() == StatusCode::OK) as usize;
+                if let Ok(Ok(response)) = result{
+                    nadded += (response.status() == StatusCode::OK) as usize;
+                }
             }
             None => {
                 break;
