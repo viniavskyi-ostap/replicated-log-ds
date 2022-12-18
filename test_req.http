@@ -29,7 +29,7 @@ Content-Type: application/json
 
 {
   "message": {"text": "hello to master 1"},
-  "wc": 1
+  "wc": 3
 }
 
 ### Master get all

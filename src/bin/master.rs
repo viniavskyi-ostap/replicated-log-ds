@@ -57,19 +57,16 @@ async fn post_message(
     });
 
     let mut nadded: usize = 1;
-    loop {
-        if nadded == write_concern {
-            break;
-        }
+    while nadded < write_concern {
         match req_futures.next().await {
-            Some(result) => {
-                if let Ok(Ok(response)) = result{
-                    nadded += (response.status() == StatusCode::OK) as usize;
-                }
+            // futures return w/o error
+            Some(Ok(Ok(response))) => {
+                nadded += (response.status() == StatusCode::OK) as usize;
             }
-            None => {
-                break;
-            }
+            // iterator exhausted
+            None => break,
+            // futures returned with error
+            _ => continue
         }
     }
 
@@ -95,7 +92,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_messages)
             .app_data(Data::clone(&app_data))
     })
-    .bind(("0.0.0.0", 8080))?
-    .run()
-    .await
+        .bind(("0.0.0.0", 8080))?
+        .run()
+        .await
 }
