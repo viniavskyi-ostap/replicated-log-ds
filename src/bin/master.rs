@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 use actix_web::http::StatusCode;
 use actix_web::{
@@ -66,7 +66,7 @@ async fn post_message(
             // iterator exhausted
             None => break,
             // futures returned with error
-            _ => continue
+            _ => continue,
         }
     }
 
@@ -84,7 +84,7 @@ async fn post_message(
 async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
-    let app_data = Data::new(Mutex::new(BTreeMap::<MessageID, Arc<Message>>::new()));
+    let app_data = Data::new(RwLock::new(BTreeMap::<MessageID, Arc<Message>>::new()));
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
@@ -92,7 +92,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_messages)
             .app_data(Data::clone(&app_data))
     })
-        .bind(("0.0.0.0", 8080))?
-        .run()
-        .await
+    .bind(("0.0.0.0", 8080))?
+    .run()
+    .await
 }

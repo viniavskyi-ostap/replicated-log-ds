@@ -1,14 +1,14 @@
 use std::collections::BTreeMap;
 use std::env;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use actix::clock::sleep as async_sleep;
 use actix_web::{
-    middleware::Logger,
-    post,
-    web::{self, Data},
-    App, HttpResponse, HttpServer,
+    App,
+    HttpResponse,
+    HttpServer,
+    middleware::Logger, post, web::{self, Data},
 };
 use env_logger;
 use log::info;
@@ -45,7 +45,7 @@ async fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
     let port = args[1].parse::<u16>().unwrap();
 
-    let app_data = Data::new(Mutex::new(BTreeMap::<MessageID, Arc<Message>>::new()));
+    let app_data = Data::new(RwLock::new(BTreeMap::<MessageID, Arc<Message>>::new()));
 
     HttpServer::new(move || {
         App::new()
@@ -54,7 +54,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_messages)
             .app_data(Data::clone(&app_data))
     })
-    .bind(("0.0.0.0", port))?
-    .run()
-    .await
+        .bind(("0.0.0.0", port))?
+        .run()
+        .await
 }

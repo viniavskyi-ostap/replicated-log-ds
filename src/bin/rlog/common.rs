@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Arc, RwLock};
 
 use actix_web::http::header::ContentType;
 use actix_web::{get, web::Data, HttpResponse};
@@ -9,10 +8,10 @@ use serde_json::{self, Error as SerdeError};
 
 use crate::rlog::structs::{Message, MessageID, MessageResponse};
 
-pub type MessagesAppData = Data<Mutex<BTreeMap<MessageID, Arc<Message>>>>;
+pub type MessagesAppData = Data<RwLock<BTreeMap<MessageID, Arc<Message>>>>;
 
 pub fn append_message(data: MessagesAppData, msg_ptr: Arc<Message>, id: MessageID) {
-    let mut v = data.lock().unwrap();
+    let mut v = data.write().unwrap();
     info!("Appending message: {:?}", msg_ptr);
     v.insert(id, Arc::clone(&msg_ptr));
 }
@@ -21,7 +20,7 @@ pub fn append_message(data: MessagesAppData, msg_ptr: Arc<Message>, id: MessageI
 pub async fn get_messages(data: MessagesAppData) -> Result<HttpResponse, SerdeError> {
     let messages: Vec<MessageResponse>;
     {
-        let messages_map = data.lock().unwrap();
+        let messages_map = data.read().unwrap();
         messages = messages_map
             .iter()
             .map(|(k, v)| MessageResponse {
