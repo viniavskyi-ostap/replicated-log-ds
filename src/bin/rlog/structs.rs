@@ -2,6 +2,8 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
+use super::common::SECONDARY_URLS;
+
 #[derive(Deserialize, Debug, Serialize, Clone)]
 pub struct Message {
     text: String,
@@ -12,7 +14,7 @@ pub struct WriteConcern(pub(crate) usize);
 
 impl Default for WriteConcern {
     fn default() -> Self {
-        WriteConcern(3)
+        WriteConcern(SECONDARY_URLS.len() + 1)
     }
 }
 
@@ -26,10 +28,22 @@ impl Default for MessageID {
 }
 
 #[derive(Deserialize, Debug, Serialize, Clone)]
+pub struct QuorumAppend(pub bool);
+
+impl Default for QuorumAppend {
+    fn default() -> Self {
+        QuorumAppend(false)
+    }
+}
+
+#[derive(Deserialize, Debug, Serialize, Clone)]
 pub struct MasterMessageRequest {
     #[serde(alias = "message")]
     pub msg_ptr: Arc<Message>,
+    #[serde(default)]
     pub wc: WriteConcern,
+    #[serde(default)]
+    pub quorum_append: QuorumAppend,
 }
 
 #[derive(Deserialize, Debug, Serialize, Clone)]
