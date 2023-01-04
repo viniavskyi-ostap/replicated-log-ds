@@ -29,8 +29,21 @@ Content-Type: application/json
 
 {
   "message": {"text": "hello to master 1"},
+  "wc": 1
+}
+
+### Master post message 2
+POST http://127.0.0.1:8080/public/message/
+Content-Type: application/json
+
+{
+  "message": {"text": "hello to master 1"},
   "wc": 3
 }
 
+
 ### Master get all
 GET http://127.0.0.1:8080/public/messages/
+
+### Master get sec health list
+GET http://127.0.0.1:8080/public/health/
