@@ -7,7 +7,7 @@ use futures::future::join_all;
 use log::info;
 use serde::{Deserialize, Serialize};
 
-use super::common::SECONDARY_URLS;
+use super::config::SECONDARY_URLS;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub enum HealthStatus {

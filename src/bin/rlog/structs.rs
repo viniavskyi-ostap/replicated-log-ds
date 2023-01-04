@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use super::common::SECONDARY_URLS;
+use super::config::SECONDARY_URLS;
 
 #[derive(Deserialize, Debug, Serialize, Clone)]
 pub struct Message {

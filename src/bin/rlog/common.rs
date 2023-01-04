@@ -11,8 +11,6 @@ use crate::rlog::structs::{Message, MessageID, MessageResponse};
 
 pub type MessageLogAppData = Data<RwLock<BTreeMap<MessageID, Arc<Message>>>>;
 
-pub const SECONDARY_URLS: [&'static str; 2] = ["localhost:8081", "localhost:8082"];
-
 
 pub fn append_message(data: MessageLogAppData, msg_ptr: Arc<Message>, id: MessageID) {
     let mut v = data.write().unwrap();

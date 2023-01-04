@@ -38,7 +38,7 @@ Content-Type: application/json
 
 {
   "message": {"text": "hello to master 1"},
-  "wc": 2,
+  "wc": 1,
   "quorum_append": false
 }
 

@@ -16,6 +16,7 @@ use rand::Rng;
 use rand::seq::SliceRandom;
 
 use rlog::common::{append_message, get_messages, MessageLogAppData};
+use rlog::config::SECONDARY_SLEEP_DURATIONS;
 use rlog::structs::{Message, MessageID, SecondaryMessageRequest};
 
 mod rlog;
@@ -26,13 +27,11 @@ async fn post_message(
     request: web::Json<SecondaryMessageRequest>,
 ) -> HttpResponse {
     let request = request.into_inner();
-    let sleeps: Vec<u64> = vec![1000, 5000, 10000];
-    let sleep_dur = sleeps
+    let sleep_dur = *SECONDARY_SLEEP_DURATIONS
         .choose(&mut rand::thread_rng())
-        .unwrap_or(&10u64)
-        .clone();
+        .unwrap();
     info!("Sleeping for: {:?}", sleep_dur);
-    async_sleep(Duration::from_millis(sleep_dur)).await;
+    async_sleep(Duration::from_secs(sleep_dur)).await;
     append_message(data_mes_log, request.msg_ptr, request.id.clone());
 
     let num = rand::thread_rng().gen_range(0..100);

@@ -14,7 +14,8 @@ use tokio::{self, time};
 
 use rlog::common::{
     append_message, get_messages,
-    MessageLogAppData, SECONDARY_URLS};
+    MessageLogAppData};
+use rlog::config::{HEARTBEAT_CHECK_INTERVAL, RETRY_INTERVAL, SECONDARY_REQUEST_TIMEOUT, SECONDARY_URLS};
 use rlog::heartbeat::{
     get_secondaries_health, HealthStatus,
     HealthStatusListAppData, update_health_status};
@@ -74,10 +75,10 @@ async fn send_message(msg_req: SecondaryMessageRequest, url: String, sec_id: usi
     let client = reqwest::Client::new();
     let request = client
         .post(url)
-        .timeout(Duration::from_secs(15))
+        .timeout(Duration::from_secs(SECONDARY_REQUEST_TIMEOUT))
         .json(&msg_req);
 
-    let mut retry_interval = time::interval(Duration::from_secs(5));
+    let mut retry_interval = time::interval(Duration::from_secs(RETRY_INTERVAL));
     loop {
         { health_status = data_health_status.read().unwrap()[sec_id]; }
         if health_status == HealthStatus::DEAD {
@@ -103,7 +104,7 @@ async fn main() -> std::io::Result<()> {
 
     // start heartbeat checking background task
     tokio::spawn(async move {
-        let mut interval = time::interval(Duration::from_secs(5));
+        let mut interval = time::interval(Duration::from_secs(HEARTBEAT_CHECK_INTERVAL));
         loop {
             update_health_status(secondaries_health_clone.clone()).await;
             interval.tick().await;
