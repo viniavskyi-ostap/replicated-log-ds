@@ -3,27 +3,26 @@ use std::env;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
-use rand::Rng;
 use actix::clock::sleep as async_sleep;
 use actix_web::{
     App,
+    get,
     HttpResponse,
-    HttpServer,
-    middleware::Logger, post, get, web::{self, Data},
+    HttpServer, middleware::Logger, post, web::{self, Data},
 };
-use actix_web::error::InternalError;
 use env_logger;
 use log::info;
+use rand::Rng;
 use rand::seq::SliceRandom;
 
-use rlog::common::{append_message, get_messages, MessageLog};
+use rlog::common::{append_message, get_messages, MessageLogAppData};
 use rlog::structs::{Message, MessageID, SecondaryMessageRequest};
 
 mod rlog;
 
 #[post("/private/message/")]
 async fn post_message(
-    data_mes_log: Data<MessageLog>,
+    data_mes_log: MessageLogAppData,
     request: web::Json<SecondaryMessageRequest>,
 ) -> HttpResponse {
     let request = request.into_inner();
@@ -37,12 +36,12 @@ async fn post_message(
     append_message(data_mes_log, request.msg_ptr, request.id.clone());
 
     let num = rand::thread_rng().gen_range(0..100);
-    if num > 50 { return HttpResponse::InternalServerError().body("Not Success");}
+    if num > 50 { return HttpResponse::InternalServerError().body("Not Success"); }
     HttpResponse::Ok().body("Success")
 }
 
 #[get("/private/health/")]
-async fn get_health() -> HttpResponse{
+async fn get_health() -> HttpResponse {
     HttpResponse::Ok().finish()
 }
 

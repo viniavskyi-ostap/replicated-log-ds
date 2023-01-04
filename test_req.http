@@ -1,23 +1,23 @@
-### Sec1 post message
-POST http://127.0.0.1:8081/private/message/
-Content-Type: application/json
-
-{
-  "message": {"text": "hello to sec 1"},
-  "id": 1
-}
+#### Sec1 post message
+#POST http://127.0.0.1:8081/private/message/
+#Content-Type: application/json
+#
+#{
+#  "message": {"text": "hello to sec 1"},
+#  "id": 1
+#}
 
 ### Sec1 get all
 GET http://127.0.0.1:8081/public/messages/
 
-### Sec2 post message
-POST http://127.0.0.1:8082/private/message/
-Content-Type: application/json
-
-{
-  "message": {"text": "hello to sec 2"},
-  "id": 1
-}
+#### Sec2 post message
+#POST http://127.0.0.1:8082/private/message/
+#Content-Type: application/json
+#
+#{
+#  "message": {"text": "hello to sec 2"},
+#  "id": 1
+#}
 
 ### Sec2 get all
 GET http://127.0.0.1:8082/public/messages/
@@ -38,7 +38,8 @@ Content-Type: application/json
 
 {
   "message": {"text": "hello to master 1"},
-  "wc": 3
+  "wc": 2,
+  "quorum_append": false
 }
 
 

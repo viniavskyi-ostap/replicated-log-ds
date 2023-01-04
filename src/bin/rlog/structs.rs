@@ -9,7 +9,7 @@ pub struct Message {
     text: String,
 }
 
-#[derive(Deserialize, Debug, Serialize, Clone)]
+#[derive(Deserialize, Debug, Serialize, Clone, Copy)]
 pub struct WriteConcern(pub(crate) usize);
 
 impl Default for WriteConcern {
@@ -18,7 +18,7 @@ impl Default for WriteConcern {
     }
 }
 
-#[derive(Deserialize, Debug, Serialize, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Deserialize, Debug, Serialize, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct MessageID(pub usize);
 
 impl Default for MessageID {
@@ -27,7 +27,7 @@ impl Default for MessageID {
     }
 }
 
-#[derive(Deserialize, Debug, Serialize, Clone)]
+#[derive(Deserialize, Debug, Serialize, Clone, Copy)]
 pub struct QuorumAppend(pub bool);
 
 impl Default for QuorumAppend {

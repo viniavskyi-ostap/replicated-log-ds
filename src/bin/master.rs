@@ -1,34 +1,24 @@
 use std::collections::BTreeMap;
 use std::error::Error;
-use std::future::Future;
-use std::ops::Deref;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, atomic::{AtomicUsize, Ordering}, RwLock};
 use std::time::Duration;
 
-use actix_web::http::StatusCode;
 use actix_web::{
-    middleware::Logger,
-    post,
-    get,
-    web::{self, Data},
     App, HttpResponse, HttpServer,
-};
-
-use serde_json::{self, Error as SerdeError};
-use actix_web::http::header::ContentType;
+    middleware::Logger, post, web::{self, Data}};
+use actix_web::http::StatusCode;
 use env_logger;
 use futures::{stream::FuturesUnordered, StreamExt};
-use futures::future::join_all;
-use log::info;
 use reqwest;
-use tokio;
-use tokio::time;
+use tokio::{self, time};
 
-use rlog::common::{append_message, get_messages, SECONDARY_URLS, SECONDARY_PATH, HealthStatus, HealthStatusList, MessageLog};
-use rlog::errors::WriteConcernNotSatisfiedError;
+use rlog::common::{
+    append_message, get_messages,
+    MessageLogAppData, SECONDARY_URLS};
+use rlog::heartbeat::{
+    get_secondaries_health, HealthStatus,
+    HealthStatusListAppData, update_health_status};
 use rlog::structs::{MasterMessageRequest, Message, MessageID, SecondaryMessageRequest};
-use crate::HealthStatus::{ALIVE, DEAD};
 
 mod rlog;
 
@@ -36,123 +26,86 @@ static GLOBAL_MESSAGES_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 #[post("/public/message/")]
 async fn post_message(
-    data_mes_log: Data<MessageLog>,
-    data_health_status: Data<HealthStatusList>,
+    data_mes_log: MessageLogAppData,
+    data_health_status: HealthStatusListAppData,
     request: web::Json<MasterMessageRequest>,
 ) -> Result<HttpResponse, Box<dyn Error>> {
     let request = request.into_inner();
     let write_concern = request.wc.0;
 
     // Check quorum before appending messages!
-    if !check_quorum(write_concern, data_health_status.clone()) {
+    if request.quorum_append.0 && !check_quorum(write_concern, data_health_status.clone()) {
         return Ok(HttpResponse::InternalServerError().body("No quorum for request!"));
     }
 
     let message_id = MessageID(GLOBAL_MESSAGES_COUNT.fetch_add(1, Ordering::AcqRel));
-    let message_ptr = Arc::clone(&request.msg_ptr);
 
     // Send messages with retry logic to secondary!
-    let mut req_futures = FuturesUnordered::new();
-    let _: Vec<_> = SECONDARY_URLS.iter().enumerate().map(|(sec_id, address)| {
-        let msg_ptr = Arc::clone(&message_ptr);
-        let id = message_id.clone();
+    let req_futures = FuturesUnordered::new();
+    SECONDARY_URLS.iter().enumerate().for_each(|(sec_id, address)| {
+        let msg_ptr = Arc::clone(&request.msg_ptr);
+        let data_health_status = data_health_status.clone();
 
-        let data_hs_clone = data_health_status.clone();
         let future = tokio::spawn(async move {
-            let url = format!("http://{}/{}/", address, SECONDARY_PATH);
-            let secondary_request = SecondaryMessageRequest { msg_ptr, id };
-            send_message(secondary_request, url, sec_id, data_hs_clone.clone()).await
+            let url = format!("http://{}/{}/", address, "private/message");
+            let secondary_request = SecondaryMessageRequest { msg_ptr, id: message_id };
+            send_message(secondary_request, url, sec_id, data_health_status).await
         });
         req_futures.push(future);
-    }).collect();
+    });
 
     // Append message on master
-    append_message(data_mes_log, request.msg_ptr, message_id.clone());
+    append_message(data_mes_log, request.msg_ptr, message_id);
     let take_n = write_concern - 1;
     let _ = req_futures.take(take_n).collect::<Vec<_>>().await;
     Ok(HttpResponse::Ok().body("Success"))
 }
 
-fn check_quorum(write_concern: usize, data_health_status: Data<HealthStatusList>) -> bool {
-    let h = data_health_status.read().unwrap();
-    let alive_n = h.iter().filter(|&n| *n == ALIVE).count();
+fn check_quorum(write_concern: usize, data_health_status: HealthStatusListAppData) -> bool {
+    let health = data_health_status.read().unwrap();
+    let alive_n = health.iter().filter(|&n| *n == HealthStatus::ALIVE).count();
     return alive_n >= (write_concern - 1);
 }
 
 
-
-async fn send_message(msg_req: SecondaryMessageRequest, url: String, sec_id: usize, data_health_status: Data<HealthStatusList>) {
+async fn send_message(msg_req: SecondaryMessageRequest, url: String, sec_id: usize,
+                      data_health_status: HealthStatusListAppData) {
     let mut health_status: HealthStatus;
     let client = reqwest::Client::new();
+    let request = client
+        .post(url)
+        .timeout(Duration::from_secs(15))
+        .json(&msg_req);
+
     let mut retry_interval = time::interval(Duration::from_secs(5));
     loop {
-        {
-            health_status = data_health_status.read().unwrap()[sec_id];
-        }
-        if health_status == DEAD {
+        { health_status = data_health_status.read().unwrap()[sec_id]; }
+        if health_status == HealthStatus::DEAD {
             retry_interval.tick().await;
-            continue
+            continue;
         }
-        let response = client.post(url.clone()).timeout(Duration::from_secs(15)).json(&msg_req).send().await;
-        match response {
-            // futures return w/o error
-            Ok(response) => { if response.status() == StatusCode::OK {
-                break;
-            } },
-            // futures returned with error
-            _ => continue,
+
+        match request.try_clone().unwrap().send().await {
+            Ok(response) if response.status() == StatusCode::OK => break,
+            _ => continue
         }
     }
 }
 
-#[get("/public/health/")]
-async fn get_sec_health(data_health_status: Data<HealthStatusList>) -> Result<HttpResponse, Box<dyn Error>> {
-    let h  = data_health_status.read().unwrap().to_vec();
-    let response_json = serde_json::to_string(&h)?;
-
-    let response = HttpResponse::Ok()
-        .content_type(ContentType::json())
-        .body(response_json);
-    Ok(response)
-}
-
-async fn update_health_status(data: Data<HealthStatusList>) {
-    let client = reqwest::Client::new();
-    let health_checks = SECONDARY_URLS.map(|address| {
-            let url = format!("http://{}/{}/", address, "private/health");
-            client.get(url).timeout(Duration::from_millis(100)).send()
-        });
-
-    let responses = join_all(health_checks).await;
-
-    // Why here? Because the code between await must implement Send trait https://stackoverflow.com/questions/66061722/why-does-holding-a-non-send-type-across-an-await-point-result-in-a-non-send-futu
-    let mut v = data.write().unwrap();
-    for (idx, response) in responses.iter().enumerate(){
-        let mut status = ALIVE;
-        if let Ok(response) = response {
-            if response.status() != StatusCode::OK {
-                status = DEAD;
-            }
-        }
-        else {
-            status = DEAD;
-        }
-        v[idx] = status;
-    }
-}
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     let messages_log = Data::new(RwLock::new(BTreeMap::<MessageID, Arc<Message>>::new()));
-    let secondaries_health = Data::new(RwLock::new([DEAD; SECONDARY_URLS.len()]));
-    let clone_sec_health = secondaries_health.clone();
+    let secondaries_health = Data::new(RwLock::new([HealthStatus::DEAD; SECONDARY_URLS.len()]));
+    let secondaries_health_clone = secondaries_health.clone();
 
+    // start heartbeat checking background task
     tokio::spawn(async move {
         let mut interval = time::interval(Duration::from_secs(5));
         loop {
-            update_health_status(clone_sec_health.clone()).await;
+            update_health_status(secondaries_health_clone.clone()).await;
             interval.tick().await;
         }
     });
@@ -162,10 +115,10 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .service(post_message)
             .service(get_messages)
-            .service(get_sec_health)
+            .service(get_secondaries_health)
             .app_data(Data::clone(&messages_log))
             .app_data(Data::clone(&secondaries_health))
     })
-    .bind(("0.0.0.0", 8080))?
-    .run().await
+        .bind(("0.0.0.0", 8080))?
+        .run().await
 }
