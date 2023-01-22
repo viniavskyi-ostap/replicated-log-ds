@@ -1,4 +1,4 @@
-pub const SECONDARY_URLS: [&'static str; 2] = ["localhost:8081", "localhost:8082"];
+pub const SECONDARY_URLS: [&'static str; 2] = ["secondary:8081", "secondary2:8082"];
 // timeout for requests to secondaries from master in seconds
 pub const SECONDARY_REQUEST_TIMEOUT: u64 = 15;
 // master retry interval in seconds
